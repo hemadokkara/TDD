@@ -10,10 +10,28 @@ jobs:
     # See: https://circleci.com/docs/configuration-reference/#executor-job
     docker:
       - image: cimg/base:stable
+      - image: cimg/python:3.8
     # Add steps to the job
     # See: https://circleci.com/docs/configuration-reference/#steps
     steps:
       - checkout
+      - run:
+          name: Install dependencies
+          command: |
+            pip install pytest
+      - run:
+          name: Run PyTest File
+          command: |
+            pytest test.py
+      - run:
+          name: Docker build
+          command: docker build -t $DOCKERHUB_USERNAME/myapp:${CIRCLE_SHA1} .
+      - run:
+          name: Authenticate with DockerHub
+          command: echo "$DOCKERHUB_PASS" | docker login --username $DOCKERHUB_USERNAME --password-stdin
+      - run:
+          name: Push Docker Image to Docker Hub
+          command: docker push $DOCKERHUB_USERNAME/myapp:${CIRCLE_SHA1}
       - run:
           name: "Say hello"
           command: "echo Hello, World!"
@@ -21,6 +39,13 @@ jobs:
 # Orchestrate jobs using workflows
 # See: https://circleci.com/docs/configuration-reference/#workflows
 workflows:
+  version: 2
+  build_and_deploy:
+    jobs:
+      - build_and_push:
+          filters:
+            branches:
+              only: main
   say-hello-workflow:
     jobs:
       - say-hello
